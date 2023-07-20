@@ -9,6 +9,7 @@ use App\Models\StockInBundle;
 use App\Models\StockInItem;
 use App\Models\User;
 use Auth;
+use Illuminate\Support\Facades\Auth as FacadesAuth;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
@@ -19,7 +20,8 @@ class UserController extends Controller
         return view('pages.login');
     }
 
-    function login(Request $req){
+    function login(Request $req)
+    {
         $login = User::where('email', $req->email)->first();
         if ($login) {
             return redirect('/dashboard');
@@ -32,17 +34,18 @@ class UserController extends Controller
             'email' => 'required',
             'password' => 'required',
         ]);
-   
+
         $credentials = $req->only('email', 'password');
         if (Auth::attempt($credentials)) {
-            return redirect()->intended('dashboard')
-                        ->withSuccess('Signed in');
+            return redirect()->route('dashboard')
+                ->withSuccess('Signed in');
         }
-  
-        return redirect("login")->withSuccess('Login details are not valid');
+
+        return redirect()->back()->withError('Login details are not valid');
     }
 
-    public function createUser(Request $req){
+    public function createUser(Request $req)
+    {
         $newUser = new User();
 
         $newUser->name = $req->name;
@@ -56,14 +59,13 @@ class UserController extends Controller
     }
 
     public function logOut(Request $req)
-{
-    Auth::logout();
+    {
+        FacadesAuth::logout();
 
-    $req->session()->invalidate();
+        $req->session()->invalidate();
 
-    $req->session()->regenerateToken();
+        $req->session()->regenerateToken();
 
-    return redirect('/');
-}
-
+        return redirect('/');
+    }
 }
