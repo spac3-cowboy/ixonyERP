@@ -9,7 +9,6 @@ use App\Models\StockInBundle;
 use App\Models\StockInItem;
 use App\Models\User;
 use Auth;
-use Illuminate\Support\Facades\Auth as FacadesAuth;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
@@ -60,7 +59,7 @@ class UserController extends Controller
 
     public function logOut(Request $req)
     {
-        FacadesAuth::logout();
+        Auth::logout();
 
         $req->session()->invalidate();
 
