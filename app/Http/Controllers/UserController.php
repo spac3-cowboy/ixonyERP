@@ -2,69 +2,79 @@
 
 namespace App\Http\Controllers;
 
-
-use Illuminate\Http\Request;
-use App\Models\Product;
-use App\Models\StockInBundle;
-use App\Models\StockInItem;
 use App\Models\User;
-use Auth;
+use App\services\ProfileService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 
 class UserController extends Controller
 {
-
-    public function loginPage()
+    public function editProfile()
     {
-        return view('pages.login');
-    }
-
-    function login(Request $req)
-    {
-        $login = User::where('email', $req->email)->first();
-        if ($login) {
-            return redirect('/dashboard');
+        try {
+            return view('admin.user.profile');
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
     }
 
-    public function customLogin(Request $req)
+
+    public function profileInfoUpdate(Request $request)
     {
-        $req->validate([
-            'email' => 'required',
-            'password' => 'required',
+        try {
+            $service = new ProfileService();
+            $service->setName($request->name)
+                ->setEmail($request->email)
+                ->infoUpdate();
+
+            return back()->with(['alert-type' => 'success', 'message' => 'Profile Info Updated']);
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
+
+
+    public function profilePasswordUpdate(Request $request)
+    {
+
+        $request->validate([
+            'oldPassword'           => 'required',
+            'newPassword'           => 'required',
+            'confirmPassword'       => 'required',
         ]);
 
-        $credentials = $req->only('email', 'password');
-        if (Auth::attempt($credentials)) {
-            return redirect()->route('dashboard')
-                ->withSuccess('Signed in');
+        try {
+            $service = new ProfileService();
+            $service->setOldPassword($request->oldPassword)
+                ->setNewPassword($request->newPassword)
+                ->setConfirmPassword($request->confirmPassword)
+                ->passwordUpdate();
+
+            $notification = array([
+                'alert-type'    => Session::get('alert-type'),
+                'message'       => Session::get('message'),
+            ]);
+
+            return back()->with($notification);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
-
-        return redirect()->back()->withError('Login details are not valid');
     }
 
-    public function createUser(Request $req)
+
+    public function profileImageUpdate(Request $request)
     {
-        $newUser = new User();
+        try {
+            $service = new ProfileService();
 
-        $newUser->name = $req->name;
-        $newUser->email = $req->email;
-        $newUser->password = Hash::make($req->password);
-        $newUser->role_id = $req->role_id;
+            $service->setImage($request->image)
+                ->imageUpdate();
 
-        $newUser->save();
-
-        return redirect()->back();
-    }
-
-    public function logOut(Request $req)
-    {
-        Auth::logout();
-
-        $req->session()->invalidate();
-
-        $req->session()->regenerateToken();
-
-        return redirect('/');
+            return back()->with(['alert-type'   => 'success', 'message' => 'Image Updated Successfully']);
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
     }
 }

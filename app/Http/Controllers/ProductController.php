@@ -2,124 +2,170 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Category;
 use App\Models\Product;
-use App\Models\StockOut;
-use App\Models\ChallanItem;
-use Auth;
+use App\Models\Purchase;
+use Illuminate\Http\Request;
+use PDF;
 
 class ProductController extends Controller
 {
-    function showAddProduct(Request $req){
-
-         return view('pages.addProduct');
-
-     }
-
-    function add(Request $req){
-
-        $userId = Auth::id();
-
-           $newProduct = new Product();
-
-           $newProduct->series = $req->series;
-           $newProduct->title = $req->title;
-           $newProduct->current_price = $req->current_price;
-           $newProduct->details = $req->details;
-           $newProduct->model = $req->model;
-           $newProduct->brand = $req->brand;
-           $newProduct->origin = $req->origin;
-           $newProduct->country_of_manufacturing = $req->country_of_manufacturing;
-           $newProduct->base_unit = $req->base_unit;
-           $newProduct->current_stock = $req->current_stock;
-           $newProduct->stock_notification_limit = $req->stock_notification_limit;
-           $newProduct->created_by = $userId;
-
-            $newProduct->save();
+    public function productList()
+    {
+        try {
+            $products = Product::all();
+            $categories = Category::all();
 
 
-            return redirect('/all-product');
+
+            return view('admin.product.product', [
+                'products'          => $products,
+                'categories'        => $categories,
+            ]);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
+    }
 
-        function allProduct(Request $req){
-            $allProducts = Product::all();
-            $quantity = ChallanItem::sum('quantity');
+    public function productEdit($id)
+    {
+        try {
+            $product = Product::findOrFail($id);
+            $categories = Category::all();
 
-        //     $newQuantityItem = 0;
-        //    foreach($quantity as $quantityItem){
-        //     $newQuantityItem = $quantityItem->quantity;
-        //    }
-
-        // $quantity = ixony::table('challan_items')
-        //     ->select('product_id', ixony::raw('SUM(quantity) as total_quantity'))
-        //     ->groupBy('product_id')
-        //     ->get();
-
-           
-         
-            // $allProducts = Product::orderBy('id', 'desc')->get();
- 
-            return view('pages.allProduct',['products'=> $allProducts,'quantity'=> $quantity]);         
+            return view('admin.product.editProduct', [
+                'product'       => $product,
+                'categories'    => $categories,
+            ]);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
+    }
 
-        function updateProduct(Request $req, $id){
 
-            $updateProduct = Product::find($id);
- 
-            return view('pages.updateProduct', ['updateProduct'=>  $updateProduct]);       
+    public function productStore(Request $request)
+    {
+
+        try {
+            if (Product::where('model', $request->model)->exists()) {
+                $notification = array(
+                    'message' => 'Product Already Exists!',
+                    'alert-type' => 'error',
+                );
+
+                return back()->with($notification);
+            } else {
+
+
+                $product = new Product();
+                $product->title = $request->title;
+                $product->series = $request->series;
+                $product->details = $request->details;
+                $product->model = $request->model;
+                $product->category = $request->category;
+                $product->brand = $request->brand;
+                $product->origin = $request->origin;
+                $product->country_of_manufacturing = $request->country_of_manufacturing;
+                $product->base_unit = $request->base_unit;
+                $product->current_price = $request->current_price;
+                $product->current_stock = $request->current_stock;
+                $product->stock_limit = $request->stock_limit;
+                $product->save();
+
+
+                $notification = array(
+                    'message' => 'Product Added',
+                    'alert-type' => 'success',
+                );
+
+                return back()->with($notification);
+            }
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
+    }
 
-        public function update(Request $req, $id)
-        {
-            $product = Product::find($id);
 
-           $product->title = $req->title;
-           $product->series = $req->series;
-           $product->current_price = $req->current_price;
-           $product->details = $req->details;
-           $product->model = $req->model;
-           $product->brand = $req->brand;
-           $product->origin = $req->origin;
-           $product->country_of_manufacturing = $req->country_of_manufacturing;
-           $product->base_unit = $req->base_unit;
-           $product->current_stock = $req->current_stock;
-           $product->stock_notification_limit = $req->stock_notification_limit;
-           $product->update();
+    public function productUpdate(Request $request)
+    {
+        try {
+            $product = Product::findOrFail($request->id);
+            $product->title = $request->title;
+            $product->series = $request->series;
+            $product->details = $request->details;
+            $product->model = $request->model;
+            $product->category = $request->category;
+            $product->brand = $request->brand;
+            $product->origin = $request->origin;
+            $product->country_of_manufacturing = $request->country_of_manufacturing;
+            $product->base_unit = $request->base_unit;
+            $product->current_price = $request->current_price;
+            $product->current_stock = $request->current_stock;
+            $product->stock_limit = $request->stock_limit;
+            $product->update();
 
-           return redirect('all-product');
 
+            $notification = array(
+                'message' => 'Product Updated',
+                'alert-type' => 'success',
+            );
+
+            return back()->with($notification);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
+    }
 
 
-        function stockIn(Request $req){
-            $stockProducts = Product::all();
- 
-            return view('pages.stockInVoucher',['stockProducts'=> $stockProducts]); 
+    public function productView($id)
+    {
+        try {
+            $product = Product::findOrFail($id);
+            return view('admin.product.view', [
+                'product'       => $product,
+            ]);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
+    }
 
-        function stockOut(){
-            $stockOutProduct = Product::all();
-            return view('pages.stockOut',['stockOutProduct' => $stockOutProduct]);
+
+    public function search(Request $request)
+    {
+        try {
+            $data = $request->all();
+
+            $products = Product::where(function ($q) use ($data) {
+                if (!empty($data) && $data['q'] != '' && $data['q'] != 'undefined') {
+                    $q->where(function ($q) use ($data) {
+                        $q->where('model', 'like', '%' . $data['q'] . '%');
+                        $q->orWhere('brand', 'like', '%' . $data['q'] . '%');
+                        $q->orWhere('origin', 'like', '%' . $data['q'] . '%');
+                        $q->orWhere('title', 'like', '%' . $data['q'] . '%');
+                        $q->orWhere('series', 'like', '%' . $data['q'] . '%');
+                    });
+                }
+            })->get();
+
+            return view('admin.product.searchProduct', [
+                'products' => $products,
+            ]);
+
+            return $products;
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
-
-        
-
-        public function stockOutInsert(Request $req){
-            $stockOutProduct = $req->product_id;
-            
-            $newVoucher = Product::find($stockOutProduct);
+    }
 
 
+    public function productDownload()
+    {
+        $products = Product::all();
 
-            return view('pages.stockOutVoucher',['newVoucher' => $newVoucher]);
-        }
+        $pdf = Pdf::loadView('admin.product.download', [
+            'products'          => $products,
+        ]);
 
-        public function search(){
-            $search_text = $_GET['query'];
-            $products = Product::where('series','LIKE', '%'.$search_text.'%')->orWhere('brand', 'LIKE', '%' . $search_text . '%')->orWhere('title', 'LIKE', '%' . $search_text . '%')->get();
-
-            return view('pages.search',['products' => $products]);
-         }
-
-
+        return $pdf->download('product.pdf');
+    }
 }
